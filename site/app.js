@@ -73,13 +73,14 @@ const classBySlug = (slug) => state.index.classes.find((c) => c.slug === slug);
 
 function pricesNow() {
   const L = state.prices?.leagues?.[state.league];
-  return L ? { divine: L.divine, chaos: L.chaos } : null;
+  return L ? { divine: L.divine, chaos: L.chaos, bases: L.bases || {} } : null;
 }
 
 function moneyEl(chaos, block) {
   const p = pricesNow();
   const m = money(chaos, p?.divine);
   if (!m) return el('span', { class: 'no' }, '—');
+  if (chaos > 0 && chaos < 1) return el('span', {}, 'under 1 c');
   if (m.div == null) return el('span', {}, `${m.chaos.toLocaleString('en')} c`);
   return el('span', {}, el('span', { class: 'div' }, `${m.div} div`), el('span', { class: `ch${block ? ' block' : ''}` }, `${m.chaos.toLocaleString('en')} c`));
 }
@@ -105,6 +106,45 @@ function currencyLine(m, title) {
   const list = [...(m.uses || []).map(([name, k]) => [name, k * (m.tries || 0)]), ...(m.once || [])].filter(([, c]) => c > 0);
   if (!list.length) return null;
   return el('p', { class: 'muted' }, `${title}: `, list.map(([name, c]) => `${approx(c)} ${name}`).join(', '), '.');
+}
+
+// «Если не получилось»: ситуации и варианты, лучший помечен
+function fallbackView(step, t) {
+  const groups = step.fallback || [];
+  const box = el('div', { class: 'fallback' });
+  for (const g of groups) {
+    box.append(el('h3', {}, g.when));
+    if (!g.options.length) { box.append(el('p', { class: 'muted' }, 'Bench crafts and side protection cannot miss.')); continue; }
+    for (const x of g.options) {
+      let cost = x.cost;
+      let extra = null;
+      if (x.restart) {
+        const own = t.basePrice != null && t.basePrice !== '' ? Number(t.basePrice) : null;
+        const base = own ?? x.base;
+        cost = base == null ? null : base + (x.spent || 0);
+        const inp = el('input', { type: 'number', min: '0', step: '1', value: own ?? '', placeholder: x.base != null ? `${Math.round(x.base)} (poe.ninja)` : 'enter', 'aria-label': 'Price of a new base in chaos', style: 'width: 150px; min-height: 34px' });
+        inp.onchange = () => { t.basePrice = inp.value === '' ? null : Math.max(0, Number(inp.value)); save(); render(); };
+        extra = el('label', { class: 'baseprice' }, 'New base costs ', inp, ' c', x.base == null && own == null ? el('span', { class: 'no' }, ' — no poe.ninja price for this base') : null);
+      }
+      box.append(el('div', { class: `fb${x.best ? ' best' : ''}` },
+        el('div', { class: 'fb-head' }, el('b', {}, x.name), x.best ? el('span', { class: 'pill-best' }, 'Easiest') : null),
+        el('p', { class: 'muted' }, x.how),
+        el('div', { class: 'fb-row' },
+          el('span', {}, x.chance >= 1 ? 'Always works' : `${pct(x.chance)} per try`),
+          el('span', {}, cost === 0 ? 'Free' : cost != null ? moneyEl(cost) : '—'),
+          x.loses ? el('span', { class: 'rerolls' }, `Can lose ${x.loses}`) : el('span', { class: 'keeps' }, 'Loses nothing')),
+        extra));
+    }
+  }
+  box.append(el('p', { class: 'note' }, 'Whatever happens, paste the item again: the plan starts from what you have.'));
+  return box;
+}
+
+function stepTitle(m) {
+  if (m.goal) return `${m.name} until ${m.goal}`;
+  if (m.forT) return `${m.name}: ${m.forT.label}`;
+  if (m.key?.startsWith('lock:')) return m.name;
+  return `${m.name}, hoping for every mod at once`;
 }
 
 const tries = (p) => (p ? Math.max(1, Math.round(1 / p)).toLocaleString('en') : '—');
@@ -278,7 +318,10 @@ async function renderBench(main) {
         el('button', { type: 'button', 'aria-pressed': String(state.detail), onclick: () => { state.detail = true; render(); } }, 'Detailed'))));
 
   const kids = [head];
-  if (!state.detail) kids.push(el('div', { class: 'pair' }, itemCard(cls, item, t, st), targetCard(t, st)));
+  const steps = routeSteps();
+  const k = state.detail ? 0 : Math.min(state.step, steps.length);
+  const view = project(item, st, steps, k);
+  if (!state.detail) kids.push(el('div', { class: 'pair' }, itemCard(cls, item, t, st, view, k), targetCard(t, st, view)));
   kids.push(...(state.detail ? detailView(cls, item, t, st) : simpleView(t)));
   const y = window.scrollY;
   main.replaceChildren(...kids);
@@ -287,39 +330,80 @@ async function renderBench(main) {
 
 const STATUS_MARK = { ok: '✓', low: '!', missing: '×' };
 
-function itemCard(cls, item, t, st) {
+// Шаги маршрута из готового расчёта (или пусто, пока считается)
+function routeSteps() {
+  const p = state.plan;
+  if (!p || p.done) return [];
+  return p.route?.steps?.length ? p.route.steps : p.next ? [p.next] : [];
+}
+
+const sameT = (a, b) => a && b && a.t === b.t && a.g === b.g;
+
+// Предмет и цели после шагов 1…k: моды из шагов показаны как цель («T3 or better»), без случайных модов
+function project(item, st, steps, k) {
+  let mods = item.mods.map((m) => ({ m, state: st.find((x) => x.mod === m)?.state || 'spare' }));
+  const states = st.map((x) => x.state);
+  for (const step of steps.slice(0, k)) {
+    if (step.reset) {
+      mods = mods.filter((x) => x.m.fractured);
+      st.forEach((x, j) => { if (!(x.mod && x.mod.fractured && x.state === 'ok')) states[j] = 'missing'; });
+    }
+    if (step.clear) {
+      mods = mods.filter((x) => x.m.g !== step.clear || x.m.fractured);
+      st.forEach((x, j) => { if (x.target.g === step.clear) states[j] = 'missing'; });
+    }
+    if (step.drop) {
+      const j = st.findIndex((x) => sameT(x.target, step.drop));
+      if (j >= 0) mods = mods.filter((x) => x.m !== st[j].mod);
+    }
+    for (const x of step.extra || []) mods.push({ m: { g: x.g, text: x.text, crafted: true }, state: 'spare', step: step.n, meta: true });
+    for (const t of step.adds || []) {
+      const j = st.findIndex((x) => sameT(x.target, t));
+      if (j < 0 || states[j] === 'ok') continue;
+      if (st[j].mod) mods = mods.filter((x) => x.m !== st[j].mod);
+      mods.push({ m: { g: t.g, text: t.label, crafted: !!step.crafted }, state: 'ok', step: step.n, target: st[j].target });
+      states[j] = 'ok';
+    }
+  }
+  return { mods, states };
+}
+
+function itemCard(cls, item, t, st, view, k) {
   const box = el('section', { class: 'card', 'aria-label': 'Your item' });
+  const title = k > 0 ? `After step ${k}` : item.blank ? 'Fresh base' : item.name;
   box.append(el('div', { class: 'card-head' },
-    el('span', { class: `iname r-${item.rarity}` }, item.blank ? 'Fresh base' : item.name),
+    el('span', { class: `iname r-${k > 0 ? 'rare' : item.rarity}` }, title),
     el('span', { class: 'muted' }, `${item.base}, item level ${item.ilvl}${item.infl.length ? `, ${item.infl.map(influenceName).join(' and ')}` : ''}`)));
-  const used = new Set(st.filter((x) => x.mod).map((x) => x.mod));
   for (const gen of ['prefix', 'suffix']) {
-    const mods = item.mods.filter((m) => m.g === gen);
+    const mods = view.mods.filter((x) => x.m.g === gen);
     box.append(el('p', { class: 'grp' }, `${gen === 'prefix' ? 'Prefixes' : 'Suffixes'} ${mods.length} of 3`));
-    for (const m of mods) {
-      const s = st.find((x) => x.mod === m);
-      const cls2 = s ? s.state : 'spare';
-      box.append(el('div', { class: `mod ${cls2}` },
-        el('span', { class: `st ${cls2}`, 'aria-label': s ? s.state : 'not in the target' }, s ? STATUS_MARK[s.state] : '·'),
+    for (const x of mods) {
+      const m = x.m;
+      const cls2 = x.state;
+      box.append(el('div', { class: `mod ${cls2}${x.step ? ' planned' : ''}` },
+        el('span', { class: `st ${cls2}`, 'aria-label': x.meta ? 'bench craft for the next steps' : x.step ? 'added by a step' : cls2 === 'spare' ? 'not in the target' : cls2 }, x.step && !x.meta ? '✓' : STATUS_MARK[cls2] || '·'),
         el('span', {}, m.text.replace(/\n/g, ', ')),
+        x.step ? el('span', { class: 'tagx step' }, `Step ${x.step}`) : null,
         m.crafted ? el('span', { class: 'tagx crafted' }, 'Crafted') : null,
         m.fractured ? el('span', { class: 'tagx fractured' }, 'Fractured') : null,
-        m.tier ? el('span', { class: 't' }, `T${m.tier}`) : null));
+        x.target ? el('span', { class: 't' }, x.target.tier === 1 ? 'T1' : `T${x.target.tier}+`) : m.tier ? el('span', { class: 't' }, `T${m.tier}`) : null));
     }
     for (let i = mods.length; i < 3; i++) box.append(el('div', { class: 'mod open' }, `Open ${gen}`));
   }
-  const spare = item.mods.filter((m) => !used.has(m) && !m.fractured);
-  if (spare.length && !item.blank) box.append(el('p', { class: 'note', style: 'margin-top: 12px' }, `${spare.map((m) => m.text.split('\n')[0].replace(/\(.*?\)/g, '')).join(' and ')} ${spare.length > 1 ? 'are' : 'is'} not in the target, so ${spare.length > 1 ? 'they are' : 'it is'} the first to give up if a step needs the slot.`));
-  if (item.unknown?.length) box.append(el('p', { class: 'note' }, `Not recognised: ${item.unknown.join('; ')}`));
+  const spare = view.mods.filter((x) => x.state === 'spare' && !x.m.fractured);
+  if (spare.length && !item.blank && !k) box.append(el('p', { class: 'note', style: 'margin-top: 12px' }, `${spare.map((x) => x.m.text.split('\n')[0].replace(/\(.*?\)/g, '')).join(' and ')} ${spare.length > 1 ? 'are' : 'is'} not in the target, so ${spare.length > 1 ? 'they are' : 'it is'} the first to give up if a step needs the slot.`));
+  if (k > 0) box.append(el('p', { class: 'note', style: 'margin-top: 12px' }, 'Shown as if the steps before worked. Mods from steps are listed as in your target.'));
+  if (item.unknown?.length && !k) box.append(el('p', { class: 'note' }, `Not recognised: ${item.unknown.join('; ')}`));
   return box;
 }
 
-function targetCard(t, st) {
-  const ok = st.filter((x) => x.state === 'ok').length;
+function targetCard(t, st, view) {
+  const states = view ? view.states : st.map((x) => x.state);
+  const ok = states.filter((x) => x === 'ok').length;
   return el('section', { class: 'card', 'aria-label': 'Target' },
     el('div', { class: 'card-head' }, el('h2', {}, 'Target'), el('span', { class: 'muted' }, `${ok} of ${st.length} done`)),
-    ...st.map((x) => el('div', { class: `mod ${x.state}` },
-      el('span', { class: `st ${x.state}` }, STATUS_MARK[x.state]),
+    ...st.map((x, j) => el('div', { class: `mod ${states[j]}` },
+      el('span', { class: `st ${states[j]}` }, STATUS_MARK[states[j]]),
       el('span', {}, x.target.label),
       el('span', { class: 't' }, x.target.tier === 1 ? 'T1' : `T${x.target.tier} or better`))),
     el('div', { class: 'row', style: 'margin-top: 12px' },
@@ -347,27 +431,40 @@ function simpleView(t) {
       return [el('section', { class: 'next done' }, el('h2', { class: 'big' }, 'Done: the item has every mod you wanted'), el('p', { class: 'muted' }, 'Bench craft or Divine Orb are next if you want higher values.'))];
     }
     const r = p.route;
-    const steps = r?.steps?.length ? r.steps : p.next ? [p.next] : [];
-    if (state.step >= steps.length) state.step = 0;
-    const n = steps[state.step];
+    const steps = routeSteps();
+    if (state.step > steps.length) state.step = 0;
+    const atEnd = steps.length > 0 && state.step === steps.length;
+    const n = atEnd ? null : steps[state.step];
     const first = steps[0];
     const out = [];
-    if (n) {
-      const go = (d) => { state.step = Math.max(0, Math.min(steps.length - 1, state.step + d)); render(); };
+    const go = (d) => { state.step = Math.max(0, Math.min(steps.length, state.step + d)); state.fbOpen = false; render(); };
+    const nav = () => el('div', { class: 'row stepnav' },
+      el('button', { class: 'btn quiet', type: 'button', disabled: state.step === 0, onclick: () => go(-1) }, '← Previous'),
+      el('button', { class: 'btn quiet', type: 'button', disabled: atEnd, onclick: () => go(1) }, state.step === steps.length - 1 ? 'Result →' : 'Next →'));
+    if (!atEnd && n && steps.length) out.push(el('p', { class: 'note' }, 'Safest route: the fewest random tries and the least risk of losing mods you already have. Cost is shown for comparison.'));
+    if (atEnd) {
+      out.push(el('section', { class: 'next done', 'aria-labelledby': 'ns' },
+        el('div', { class: 'spread', style: 'align-items: center' }, el('p', { class: 'muted', style: 'color: var(--green-soft)' }, 'Result'), nav()),
+        el('h2', { id: 'ns', class: 'big' }, `Every mod you wanted, in ${steps.length} step${steps.length > 1 ? 's' : ''}`),
+        el('div', { class: 'next-row' }, el('div', { class: 'stat' }, el('b', {}, r?.avg != null ? moneyEl(r.avg) : '—'), el('span', {}, 'average cost of the whole craft'))),
+        el('p', { class: 'muted' }, 'The item card shows the finished item. Bench craft or Divine Orb are next if you want higher values.')));
+    } else if (n) {
       out.push(el('section', { class: 'next', 'aria-labelledby': 'ns' },
         el('div', { class: 'spread', style: 'align-items: center' },
-          el('p', { class: 'muted', style: 'color: var(--green-soft)' }, steps.length > 1 ? `Step ${state.step + 1} of ${steps.length}` : 'Next step'),
-          steps.length > 1 ? el('div', { class: 'row stepnav' },
-            el('button', { class: 'btn quiet', type: 'button', disabled: state.step === 0, onclick: () => go(-1) }, '← Previous'),
-            el('button', { class: 'btn quiet', type: 'button', disabled: state.step === steps.length - 1, onclick: () => go(1) }, 'Next →')) : null),
-        el('h2', { id: 'ns', class: 'big' }, n.forT ? `${n.name}: ${n.forT.label}` : `${n.name}, hoping for every mod at once`),
+          el('p', { class: 'muted', style: 'color: var(--green-soft)' }, `Step ${state.step + 1} of ${steps.length}`),
+          nav()),
+        el('h2', { id: 'ns', class: 'big' }, stepTitle(n)),
         el('div', { class: 'next-row' },
           el('div', { class: 'stat' }, el('b', {}, pct(n.chance)), el('span', {}, 'chance per try')),
           el('div', { class: 'stat' }, el('b', {}, n.chance >= 1 ? 'one' : `about ${tries(n.chance)}`), el('span', {}, 'tries on average')),
           el('div', { class: 'stat' }, el('b', {}, n.avg != null ? moneyEl(n.avg) : '—'), el('span', {}, 'average cost'))),
-        el('p', { class: 'muted' }, n.sub[0].toUpperCase() + n.sub.slice(1), '. ', n.keeps ? 'Keeps every mod you have.' : n.note || ''),
+        el('p', { class: 'muted' }, n.sub[0].toUpperCase() + n.sub.slice(1), '. ', n.partial ? 'Other mods that land do not matter: the next steps clear or fill the slots.' : n.keeps ? `Keeps every mod you have.${n.note ? ` ${n.note}` : ''}` : n.note || ''),
         state.step > 0 ? el('p', { class: 'note' }, 'Counted as if the steps before worked. If a step goes differently, paste the item again and the plan starts from what you have.') : null,
-        currencyLine(n, 'This step uses')));
+        currencyLine(n, 'This step uses'),
+        el('div', { class: 'row' }, el('button', { class: 'btn quiet', type: 'button', 'aria-expanded': String(!!state.fbOpen), onclick: () => { state.fbOpen = !state.fbOpen; render(); } }, state.fbOpen ? 'Hide what to do if it goes wrong' : 'If it goes wrong')),
+        state.fbOpen ? fallbackView(n, t) : null));
+    }
+    if (atEnd || n) {
       if (steps.length > 1 || r?.currency?.length) {
         out.push(el('section', { class: 'card', 'aria-labelledby': 'cw' },
           el('div', { class: 'card-head' }, el('h2', { id: 'cw' }, 'Currency for the whole craft'), r?.avg != null ? el('span', { class: 'muted' }, 'on average ', moneyEl(r.avg)) : null),

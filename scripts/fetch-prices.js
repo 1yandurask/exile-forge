@@ -121,7 +121,27 @@ async function league(name) {
   chaos['Chaos Orb'] = 1;
   const divine = chaos['Divine Orb'];
   if (!divine || divine < 2) throw new Error(`no Divine Orb price (${divine})`);
-  return { divine, chaos };
+  return { divine, chaos, bases: await bases(q) };
+}
+
+// Цены баз (для совета «купить новую базу»): { name: [[уровень предмета, влияние, chaos]] }
+async function bases(q) {
+  const out = {};
+  for (const url of [`${NINJA}/poe1/api/economy/stash/current/item/overview?league=${q}&type=BaseType`, `${NINJA}/api/data/itemoverview?league=${q}&type=BaseType`]) {
+    try {
+      const d = await json(url);
+      let n = 0;
+      for (const l of d.lines || []) {
+        const name = l.baseType || l.name;
+        if (!name || !l.chaosValue) continue;
+        (out[name] ||= []).push([l.levelRequired ?? l.itemLevel ?? 0, l.variant || '', round(l.chaosValue)]);
+        n++;
+      }
+      if (n) { console.log(`  BaseType: ${n} prices`); return out; }
+    } catch (e) { console.warn('  BaseType:', e.message); }
+  }
+  console.log('  BaseType: 0 prices');
+  return out;
 }
 
 const out = { updated: new Date().toISOString(), leagues: {} };

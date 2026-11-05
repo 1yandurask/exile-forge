@@ -15,7 +15,7 @@ self.onmessage = async (e) => {
     const p = plan(cls, item, targets, o);
     p.route = route(cls, item, targets, o, p);
     // Списки модов для расчёта маршрута странице не нужны
-    const slim = (m) => ({ ...m, pool: undefined, low: undefined });
+    const slim = (m) => ({ ...m, pool: undefined, low: undefined, dist: undefined });
     p.methods = p.methods.map(slim);
     if (p.next) p.next = slim(p.next);
     p.route.steps = p.route.steps.map(slim);

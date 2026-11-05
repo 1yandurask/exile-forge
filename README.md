@@ -6,6 +6,8 @@ Paste an item, pick the mods you want, and see the next step with its chance per
 
 - 📋 **Your item or a fresh base.** Press `Ctrl+Alt+C` on an item in the game and `Ctrl+V` on the page, or choose a base and item level without having an item.
 - 🎯 **Targets.** Each mod at a tier or better ("T3 or better"). Pick them from the list of mods that can roll on the base, or paste a finished item and take its mods.
+- 🛡️ **Safest route.** The plan picks the route with the fewest random tries and the least risk of losing mods you already have: rerolls for part of the mods, side protection and Orb of Scouring, bench crafts with Multimod, Exalted Orb with attack or caster mods blocked.
+- 🩹 **If it goes wrong.** Every step says what to do after a miss: keep the extra mod, protect a side and annul, clear a side, or buy a new base (price from poe.ninja, or your own).
 - 🧮 **Every method.** Exalted Orb, bench craft, Annul then Exalt, Alteration spam, Chaos Orb, essences, fossils, Harvest reforge. Chance from the game's mod weights, average cost in divines (with chaos in small print) from poe.ninja prices.
 - 💾 **Saved targets.** Kept in your browser. A link to a target can be shared.
 - ⌨️ **With Exile Compass.** Hover an item in the game and press `Alt+F`: it opens here.

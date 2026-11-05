@@ -160,3 +160,13 @@ tr.want td:first-child { color: var(--green-soft); font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: baseline; gap: 4px; padding: 6px 12px; border-radius: 999px; background: var(--raise); border: 1px solid var(--line); font-size: 14.5px; }
 .chip b { color: var(--gold); font-weight: 700; }
+.mod.planned { border-style: dashed; }
+.tagx.step { color: var(--green-soft); border-color: rgba(143, 207, 138, .45); }
+.fallback { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; padding-top: 14px; border-top: 1px solid rgba(143, 207, 138, .25); }
+.fallback h3 { font: 700 17px var(--serif); margin-top: 6px; }
+.fb { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
+.fb.best { border-color: rgba(143, 207, 138, .6); }
+.fb-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pill-best { font-size: 12px; font-weight: 700; color: var(--green-ink); background: var(--green); border-radius: 999px; padding: 1px 9px; }
+.fb-row { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; }
+.baseprice { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-top: 4px; }

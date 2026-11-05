@@ -106,3 +106,37 @@ test('route keeps mods on a rare item: exalt into the open slot first', () => {
   assert.equal(r.steps[0].name, 'Exalted Orb');
   assert.equal(r.currency.find(([n]) => n === 'Exalted Orb')[1].toFixed(3), (1 / r.steps[0].chance).toFixed(3));
 });
+
+test('a second bench craft needs “Can have up to 3 Crafted Modifiers”', () => {
+  const it = { ...E.blankItem(helmets, 'Hubris Circlet', 86, []), rarity: 'rare', blank: false };
+  const es = index.bench.find((b) => helmets.mods[b.mod]?.x === '+(35-45) to maximum Energy Shield').mod;
+  it.mods = [{ id: es, g: 'prefix', gr: helmets.mods[es].gr, crafted: true, text: helmets.mods[es].x }];
+  const t = targetsFor(it, [[/^\+#% to Fire Resistance$/, 'suffix', 5]]);
+  const p = E.plan(helmets, it, t, { index, prices: { ...prices, chaos: { ...prices.chaos, 'Divine Orb': 190 } }, trials: 100, rerolls: false });
+  const b = p.methods.find((m) => m.key.startsWith('bench:'));
+  assert.equal(b.name, 'Multimod, then bench craft');
+  assert.equal(b.chance, 1);
+  assert.ok(b.uses.some(([n, k]) => n === 'Divine Orb' && k === 2));
+});
+
+test('every step has a plan for when it goes wrong, with the easiest option marked', () => {
+  const it = E.parseItem(item('hubris-plan'), helmets);
+  const t = targetsFor(it, [[/^\+# to maximum Life$/, 'prefix', 3], [/^#% increased Energy Shield$/, 'prefix', 4], [/^\+#% to Cold Resistance$/, 'suffix', 3], [/^\+#% to Fire Resistance$/, 'suffix', 2]]);
+  const o = { index, prices: { ...prices, bases: { 'Hubris Circlet': [[86, '', 12]] } }, trials: 2000, seed: 1 };
+  const r = E.route(helmets, it, t, o, E.plan(helmets, it, t, o));
+  for (const s of r.steps) {
+    assert.ok(Array.isArray(s.fallback) && s.fallback.length, `step ${s.n} has a fallback`);
+    for (const g of s.fallback) if (g.options.length) assert.equal(g.options.filter((x) => x.best).length, 1);
+  }
+  const restart = r.steps.flatMap((s) => s.fallback.flatMap((g) => g.options)).find((x) => x.restart);
+  if (restart) assert.equal(restart.base, 12);
+  assert.ok(Number.isFinite(r.risk));
+});
+
+test('base price: own price wins, else poe.ninja with the same influence and item level or higher', () => {
+  const it = { base: 'Hubris Circlet', ilvl: 85, infl: [] };
+  const prices2 = { bases: { 'Hubris Circlet': [[84, '', 3], [85, '', 8], [86, '', 12], [86, 'Shaper', 90]] } };
+  assert.equal(E.basePrice({ prices: prices2 }, it), 8);
+  assert.equal(E.basePrice({ prices: prices2 }, { ...it, infl: ['shaper'] }), 90);
+  assert.equal(E.basePrice({ prices: prices2, basePrice: 5 }, it), 5);
+});
