@@ -8,6 +8,7 @@ import path from 'node:path';
 const SRC = process.argv[2];
 if (!SRC) { console.error('usage: node scripts/build-data.js <repoe data dir>'); process.exit(1); }
 const OUT = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'site', 'data');
+fs.mkdirSync(path.join(OUT, 'c'), { recursive: true });
 const read = (f) => JSON.parse(fs.readFileSync(path.join(SRC, f), 'utf8'));
 
 const mods = read('mods.json');

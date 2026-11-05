@@ -344,7 +344,7 @@ export function plan(cls, item, targets, o = {}) {
         continue;
       }
       const hit = pool.filter((x) => x.g === t.g && satisfies(cls, item.ts, x.id, t)).reduce((a, x) => a + x.w, 0);
-      add({ key: `exalt:${t.t}`, name: 'Exalted Orb', forT: t, sub: `adds one random mod into the open ${t.g}`, chance: sum ? hit / sum : 0, cost: price('Exalted Orb'), keeps: true, weights: { hit, sum } });
+      add({ key: `exalt:${t.t}`, name: 'Exalted Orb', forT: t, sub: `adds one random mod into the open ${t.g}`, chance: sum ? hit / sum : 0, cost: price('Exalted Orb'), keeps: true, weights: { hit, sum }, uses: [['Exalted Orb', 1]], pool: pool.filter((x) => x.g === t.g && satisfies(cls, item.ts, x.id, t)) });
     }
   }
 
@@ -358,7 +358,7 @@ export function plan(cls, item, targets, o = {}) {
       const b = opts[0];
       const cost = b.cost.reduce((a, [cid, n]) => a + (price(o.index.currency[cid]) ?? 0) * n, 0);
       const blocked = hasCrafted ? 'The item already has a crafted mod' : c[t.g] >= 3 && !st.find((x) => x.target === t && x.state === 'low') ? `All ${t.g}es are taken` : null;
-      add({ key: `bench:${t.t}`, name: 'Bench craft', forT: t, sub: cls.mods[b.mod].x.replace(/\n/g, ', '), chance: blocked ? 0 : 1, cost, keeps: true, unavailable: blocked });
+      add({ key: `bench:${t.t}`, name: 'Bench craft', forT: t, sub: cls.mods[b.mod].x.replace(/\n/g, ', '), chance: blocked ? 0 : 1, cost, keeps: true, unavailable: blocked, uses: b.cost.map(([cid, n]) => [o.index.currency[cid] || cid, n]), mod: b.mod });
     } else if (anySame.length) {
       const best = anySame.map((b) => cls.mods[b.mod]).sort((a, b) => (b.s[0]?.[2] ?? 0) - (a.s[0]?.[2] ?? 0))[0];
       add({ key: `bench:${t.t}`, name: 'Bench craft', forT: t, sub: `best is ${best.x}`, chance: 0, cost: null, keeps: true, unavailable: `Does not reach T${t.tier}` });
@@ -379,9 +379,10 @@ export function plan(cls, item, targets, o = {}) {
     const pAnnul = 1 / removable.length;
     const ex = price('Exalted Orb');
     const an = price('Orb of Annulment');
-    add({ key: `annul:${t.t}`, name: 'Annul, then Exalt', forT: t, sub: `removes the T${x.mod.tier} mod 1 time in ${removable.length}`, chance: pAnnul * (sum ? hit / sum : 0), cost: ex != null && an != null ? an + pAnnul * ex : null, keeps: false, risky: true, note: 'An annul can hit a mod you want to keep.' });
+    add({ key: `annul:${t.t}`, name: 'Annul, then Exalt', forT: t, sub: `removes the T${x.mod.tier} mod 1 time in ${removable.length}`, chance: pAnnul * (sum ? hit / sum : 0), cost: ex != null && an != null ? an + pAnnul * ex : null, keeps: false, risky: true, note: 'An annul can hit a mod you want to keep.', uses: [['Orb of Annulment', 1], ['Exalted Orb', pAnnul]], low: x.mod, pool: pool.filter((y) => y.g === t.g && satisfies(cls, item.ts, y.id, t)) });
   }
 
+  if (o.rerolls !== false) {
   // 4. Волшебный предмет или база с нуля: Alteration (+ Augmentation), потом Regal
   if (item.rarity === 'magic' || item.rarity === 'normal') {
     const pre = eligible(cls, item, 'prefix', new Set());
@@ -395,7 +396,7 @@ export function plan(cls, item, targets, o = {}) {
       const p = 0.5 * (wt / all) + 0.5 * (wt / W[t.g]) + 0.5 * (other / all) * (wt / W[t.g]);
       const alt = price('Orb of Alteration');
       const aug = price('Orb of Augmentation');
-      add({ key: `alt:${t.t}`, name: item.rarity === 'normal' ? 'Transmute, then Alteration spam' : 'Alteration spam', forT: t, sub: 'magic item, Augmentation when a side is free, then Regal Orb', chance: all ? p : 0, cost: alt != null && aug != null ? alt + 0.5 * (other / all) * aug : null, keeps: false, note: 'Then a Regal Orb makes it rare and adds one more mod.' });
+      add({ key: `alt:${t.t}`, name: item.rarity === 'normal' ? 'Transmute, then Alteration spam' : 'Alteration spam', forT: t, sub: 'magic item, Augmentation when a side is free, then Regal Orb', chance: all ? p : 0, cost: alt != null && aug != null ? alt + 0.5 * (other / all) * aug : null, keeps: false, note: 'Then a Regal Orb makes it rare and adds one more mod.', uses: [['Orb of Alteration', 1], ['Orb of Augmentation', 0.5 * (other / all)]], once: [...(item.rarity === 'normal' ? [['Orb of Transmutation', 1]] : []), ['Regal Orb', 1]], pool: (t.g === 'prefix' ? pre : suf).filter((x) => satisfies(cls, item.ts, x.id, t)) });
     }
   }
 
@@ -412,7 +413,7 @@ export function plan(cls, item, targets, o = {}) {
   };
 
   // 5. Chaos Orb
-  add({ key: 'chaos', name: 'Chaos Orb', sub: 'rerolls into a new rare item', chance: simulate(trials, rand, reroll(), sets), cost: price('Chaos Orb') ?? 1, keeps: false, all: true, note: rare ? '' : 'Make it rare first with one Orb of Alchemy.' });
+  add({ key: 'chaos', name: 'Chaos Orb', sub: 'rerolls into a new rare item', chance: simulate(trials, rand, reroll(), sets), cost: price('Chaos Orb') ?? 1, keeps: false, all: true, note: rare ? '' : 'Make it rare first with one Orb of Alchemy.', uses: [['Chaos Orb', 1]], once: rare ? [] : [['Orb of Alchemy', 1]] });
 
   // 6. Эссенции: мод эссенции гарантирован, остальное — как у Chaos Orb
   const ic = itemClassOf(cls);
@@ -422,7 +423,7 @@ export function plan(cls, item, targets, o = {}) {
     if (!md || !targets.some((t) => satisfies(cls, item.ts, id, t))) continue;
     if (e.ilvlMax && item.ilvl > e.ilvlMax) continue;
     const forced = { id, g: md.g, gr: md.gr };
-    add({ key: `essence:${e.id}`, name: e.name, sub: `${md.x.replace(/\n/g, ', ')} guaranteed`, chance: simulate(trials, rand, reroll(null, () => forced), sets), cost: price(e.name), keeps: false, all: true });
+    add({ key: `essence:${e.id}`, name: e.name, sub: `${md.x.replace(/\n/g, ', ')} guaranteed`, chance: simulate(trials, rand, reroll(null, () => forced), sets), cost: sumPrices([price(e.name), price('Orb of Scouring')]), keeps: false, all: true, note: 'Each new try needs an Orb of Scouring first.', uses: [[e.name, 1], ['Orb of Scouring', 1]] });
   }
 
   // 7. Фоссилии: веса по тегам; берём те, что усиливают теги нужных модов
@@ -430,7 +431,7 @@ export function plan(cls, item, targets, o = {}) {
   for (const f of o.index?.fossils || []) {
     if (!f.pos.some(([tag]) => wantTags.has(tag))) continue;
     const pools = rollPools(cls, item, fossilMul([f]));
-    add({ key: `fossil:${f.id}`, name: f.name, sub: f.desc.join(', '), chance: simulate(trials, rand, reroll(pools), sets), cost: sumPrices([price(f.name), price('Primitive Chaotic Resonator')]), keeps: false, all: true });
+    add({ key: `fossil:${f.id}`, name: f.name, sub: f.desc.join(', '), chance: simulate(trials, rand, reroll(pools), sets), cost: sumPrices([price(f.name), price('Primitive Chaotic Resonator')]), keeps: false, all: true, uses: [[f.name, 1], ['Primitive Chaotic Resonator', 1]] });
   }
 
   // 8. Harvest: перековка с гарантированным модом с тегом
@@ -443,7 +444,9 @@ export function plan(cls, item, targets, o = {}) {
       for (const x of pool) { v -= x.w; if (v <= 0) return { id: x.id, g: x.g, gr: x.gr }; }
       return null;
     };
-    add({ key: `harvest:${tag}`, name: `Harvest: reforge with a ${cap(tag)} mod`, sub: `rerolls, one mod always has the ${tag} tag`, chance: simulate(trials, rand, reroll(null, withTag), sets), cost: null, keeps: false, all: true, note: 'Lifeforce cost is not counted.' });
+    add({ key: `harvest:${tag}`, name: `Harvest: reforge with a ${cap(tag)} mod`, sub: `rerolls, one mod always has the ${tag} tag`, chance: simulate(trials, rand, reroll(null, withTag), sets), cost: null, keeps: false, all: true, note: 'Lifeforce cost is not counted.', uses: [] });
+  }
+
   }
 
   methods.sort((a, b) => {
@@ -459,6 +462,94 @@ export function plan(cls, item, targets, o = {}) {
   const usable = methods.filter((m) => !m.unavailable && m.chance > 0);
   const next = usable.find((m) => m.keeps && m.avg != null) || usable.find((m) => m.avg != null) || usable[0] || null;
   return { status: st, methods, next };
+}
+
+// ------------------------------------------------------------ маршрут
+
+/**
+ * Весь путь до цели по шагам. Сравнивает три пути и берёт самый дешёвый в среднем:
+ *  — один перекат (Chaos, эссенция, фоссилия…), в котором выпадают все цели сразу;
+ *  — моды по одному, сохраняя остальные (Exalted Orb, верстак, Annul + Exalt);
+ *  — для обычной или волшебной базы: Alteration до одной цели, Regal, дальше по одному.
+ * Каждый следующий шаг считается так, будто предыдущий удался.
+ * @param first результат plan() для текущего предмета (чтобы не считать перекаты заново)
+ * @returns { steps: [{ ...method, n }], avg, currency: [[name, count]], complete }
+ */
+export function route(cls, item, targets, o, first) {
+  if (first.done) return { steps: [], avg: 0, currency: [], complete: true };
+  const fast = { ...o, rerolls: false };
+  const usable = (m) => !m.unavailable && m.chance > 0;
+  const options = [];
+
+  // Один перекат до всех целей
+  const roll = first.methods.filter((m) => m.all && usable(m)).sort(byAvg)[0];
+  if (roll) options.push([roll]);
+
+  // По одному моду, сохраняя остальные
+  if (item.rarity === 'rare') {
+    const r = keepRoute(cls, item, targets, fast, first);
+    if (r) options.push(r);
+  }
+
+  // Alteration до самой выгодной цели, Regal, дальше по одному
+  for (const alt of first.methods.filter((m) => m.key.startsWith('alt:') && usable(m))) {
+    const next = { ...item, rarity: 'rare', blank: false, mods: [...item.mods.filter((m) => m.fractured), pickMod(cls, item, alt.pool)] };
+    const rest = keepRoute(cls, next, targets, fast);
+    if (rest) options.push([alt, ...rest]);
+  }
+
+  const total = (r) => r.reduce((a, m) => a + (m.avg ?? Infinity), 0);
+  const best = options.filter((r) => Number.isFinite(total(r))).sort((a, b) => total(a) - total(b))[0]
+    || options.sort((a, b) => b.length - a.length)[0] || [];
+  const steps = best.map((m, i) => ({ ...m, n: i + 1, pool: undefined }));
+  const cur = new Map();
+  for (const m of steps) {
+    const tries = m.tries ?? 0;
+    for (const [name, k] of m.uses || []) cur.set(name, (cur.get(name) || 0) + k * tries);
+    for (const [name, k] of m.once || []) cur.set(name, (cur.get(name) || 0) + k);
+  }
+  return {
+    steps,
+    avg: steps.length && steps.every((m) => m.avg != null) ? total(steps) : null,
+    currency: [...cur].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]),
+    complete: steps.length > 0,
+  };
+}
+
+const byAvg = (a, b) => (a.avg ?? Infinity) - (b.avg ?? Infinity);
+
+// Шаги, которые сохраняют моды: каждый раз самый дешёвый в среднем, пока цель не собрана
+function keepRoute(cls, item, targets, fast, first) {
+  const steps = [];
+  let cur = item;
+  for (let i = 0; i < 8; i++) {
+    const p = i === 0 && first ? first : plan(cls, cur, targets, fast);
+    if (p.done) return steps;
+    const m = p.methods.filter((x) => (x.keeps || x.key.startsWith('annul:')) && !x.unavailable && x.chance > 0).sort(byAvg)[0];
+    if (!m) return null;
+    steps.push(m);
+    cur = applyStep(cls, cur, m);
+  }
+  return null;
+}
+
+// Предмет после удачного шага
+function applyStep(cls, item, m) {
+  let mods = item.mods;
+  if (m.low) mods = mods.filter((x) => x !== m.low && x.id !== m.low.id);
+  const add = m.mod ? modOf(cls, item, m.mod, true) : pickMod(cls, item, m.pool);
+  return { ...item, mods: [...mods, add] };
+}
+
+// Самый частый из подходящих модов
+function pickMod(cls, item, pool) {
+  const best = [...(pool || [])].sort((a, b) => b.w - a.w)[0];
+  return modOf(cls, item, best.id, false);
+}
+
+function modOf(cls, item, id, crafted) {
+  const md = cls.mods[id];
+  return { id, g: md.g, gr: md.gr, t: md.t, tier: tiers(cls, item.ts)[id]?.tier, text: md.x, crafted, fractured: false };
 }
 
 const HARVEST_TAGS = ['life', 'defences', 'fire', 'cold', 'lightning', 'physical', 'chaos', 'attack', 'caster', 'speed', 'critical'];

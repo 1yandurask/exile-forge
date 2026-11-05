@@ -85,3 +85,24 @@ test('money shows divines and chaos', () => {
   assert.deepEqual(E.money(19, 190), { div: 0.1, chaos: 19 });
   assert.deepEqual(E.money(5, null), { div: null, chaos: 5 });
 });
+
+test('route from a fresh base: steps in order and currency for the whole craft', () => {
+  const it = E.blankItem(helmets, 'Hubris Circlet', 86, []);
+  const t = targetsFor(it, [[/^\+# to maximum Life$/, 'prefix', 3], [/^\+# to Intelligence$/, 'suffix', 3], [/^\+#% to Fire Resistance$/, 'suffix', 3]]);
+  const o = { index, prices: { ...prices, chaos: { ...prices.chaos, 'Regal Orb': 0.5, 'Orb of Scouring': 0.5 } }, trials: 3000, seed: 1 };
+  const p = E.plan(helmets, it, t, o);
+  const r = E.route(helmets, it, t, o, p);
+  assert.ok(r.steps.length >= 1);
+  assert.deepEqual(r.steps.map((s) => s.n), r.steps.map((_, i) => i + 1));
+  assert.ok(r.currency.length > 0 && r.currency.every(([, n]) => n > 0));
+  assert.ok(Math.abs(r.avg - r.steps.reduce((a, s) => a + s.avg, 0)) < 1e-6);
+});
+
+test('route keeps mods on a rare item: exalt into the open slot first', () => {
+  const it = E.parseItem(item('hubris-plan'), helmets);
+  const t = targetsFor(it, [[/^\+# to maximum Life$/, 'prefix', 3], [/^#% increased Energy Shield$/, 'prefix', 4], [/^\+#% to Cold Resistance$/, 'suffix', 3], [/^\+#% to Fire Resistance$/, 'suffix', 2]]);
+  const o = { index, prices, trials: 2000, seed: 1 };
+  const r = E.route(helmets, it, t, o, E.plan(helmets, it, t, o));
+  assert.equal(r.steps[0].name, 'Exalted Orb');
+  assert.equal(r.currency.find(([n]) => n === 'Exalted Orb')[1].toFixed(3), (1 / r.steps[0].chance).toFixed(3));
+});

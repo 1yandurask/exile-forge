@@ -155,3 +155,8 @@ tr.want td:first-child { color: var(--green-soft); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .misses { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .misses li { display: list-item; }
+.stepnav .btn { min-height: 38px; }
+.stepnav .btn[disabled] { opacity: .4; cursor: default; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: baseline; gap: 4px; padding: 6px 12px; border-radius: 999px; background: var(--raise); border: 1px solid var(--line); font-size: 14.5px; }
+.chip b { color: var(--gold); font-weight: 700; }

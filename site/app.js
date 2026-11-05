@@ -18,6 +18,7 @@ const state = {
   editorTab: 'pick',
   search: '',
   plan: null,
+  step: 0, // открытый шаг маршрута
   planKey: '',
   planError: '',
 };
@@ -92,6 +93,20 @@ function pct(p) {
   if (v >= 0.01) return `${v.toFixed(2)}%`;
   return 'under 0.01%';
 }
+// «~450»: средние количества без ложной точности
+function approx(n) {
+  if (n < 1.5) return '~1';
+  if (n < 100) return `~${Math.round(n)}`;
+  const k = 10 ** (Math.floor(Math.log10(n)) - 1);
+  return `~${(Math.round(n / k) * k).toLocaleString('en')}`;
+}
+
+function currencyLine(m, title) {
+  const list = [...(m.uses || []).map(([name, k]) => [name, k * (m.tries || 0)]), ...(m.once || [])].filter(([, c]) => c > 0);
+  if (!list.length) return null;
+  return el('p', { class: 'muted' }, `${title}: `, list.map(([name, c]) => `${approx(c)} ${name}`).join(', '), '.');
+}
+
 const tries = (p) => (p ? Math.max(1, Math.round(1 / p)).toLocaleString('en') : '—');
 
 // ------------------------------------------------------------ предмет из игры
@@ -182,6 +197,7 @@ function requestPlan(t, item) {
   const key = JSON.stringify([t.id, t.mods, t.itemText, t.ilvl, t.infl, state.league]);
   if (key === state.planKey) return;
   state.planKey = key;
+  state.step = 0;
   state.plan = null;
   state.planError = '';
   jobId++;
@@ -195,6 +211,7 @@ function render() {
   renderSaved();
   renderLeague();
   const main = $('main');
+  if (state.view !== 'target') delete main.dataset.ed;
   if (state.view === 'target' && state.draft) renderEditor(main);
   else if (!current()) renderEmpty(main);
   else renderBench(main);
@@ -263,7 +280,9 @@ async function renderBench(main) {
   const kids = [head];
   if (!state.detail) kids.push(el('div', { class: 'pair' }, itemCard(cls, item, t, st), targetCard(t, st)));
   kids.push(...(state.detail ? detailView(cls, item, t, st) : simpleView(t)));
+  const y = window.scrollY;
   main.replaceChildren(...kids);
+  window.scrollTo(0, y);
 }
 
 const STATUS_MARK = { ok: '✓', low: '!', missing: '×' };
@@ -327,25 +346,42 @@ function simpleView(t) {
     if (p.done) {
       return [el('section', { class: 'next done' }, el('h2', { class: 'big' }, 'Done: the item has every mod you wanted'), el('p', { class: 'muted' }, 'Bench craft or Divine Orb are next if you want higher values.'))];
     }
-    const n = p.next;
+    const r = p.route;
+    const steps = r?.steps?.length ? r.steps : p.next ? [p.next] : [];
+    if (state.step >= steps.length) state.step = 0;
+    const n = steps[state.step];
+    const first = steps[0];
     const out = [];
     if (n) {
+      const go = (d) => { state.step = Math.max(0, Math.min(steps.length - 1, state.step + d)); render(); };
       out.push(el('section', { class: 'next', 'aria-labelledby': 'ns' },
-        el('p', { class: 'muted', style: 'color: var(--green-soft)' }, 'Next step'),
+        el('div', { class: 'spread', style: 'align-items: center' },
+          el('p', { class: 'muted', style: 'color: var(--green-soft)' }, steps.length > 1 ? `Step ${state.step + 1} of ${steps.length}` : 'Next step'),
+          steps.length > 1 ? el('div', { class: 'row stepnav' },
+            el('button', { class: 'btn quiet', type: 'button', disabled: state.step === 0, onclick: () => go(-1) }, '← Previous'),
+            el('button', { class: 'btn quiet', type: 'button', disabled: state.step === steps.length - 1, onclick: () => go(1) }, 'Next →')) : null),
         el('h2', { id: 'ns', class: 'big' }, n.forT ? `${n.name}: ${n.forT.label}` : `${n.name}, hoping for every mod at once`),
         el('div', { class: 'next-row' },
           el('div', { class: 'stat' }, el('b', {}, pct(n.chance)), el('span', {}, 'chance per try')),
           el('div', { class: 'stat' }, el('b', {}, n.chance >= 1 ? 'one' : `about ${tries(n.chance)}`), el('span', {}, 'tries on average')),
           el('div', { class: 'stat' }, el('b', {}, n.avg != null ? moneyEl(n.avg) : '—'), el('span', {}, 'average cost'))),
         el('p', { class: 'muted' }, n.sub[0].toUpperCase() + n.sub.slice(1), '. ', n.keeps ? 'Keeps every mod you have.' : n.note || ''),
-        el('div', { class: 'row' }, el('button', { class: 'btn primary', type: 'button', onclick: () => { state.detail = true; render(); } }, 'See every method in detail'))));
+        state.step > 0 ? el('p', { class: 'note' }, 'Counted as if the steps before worked. If a step goes differently, paste the item again and the plan starts from what you have.') : null,
+        currencyLine(n, 'This step uses')));
+      if (steps.length > 1 || r?.currency?.length) {
+        out.push(el('section', { class: 'card', 'aria-labelledby': 'cw' },
+          el('div', { class: 'card-head' }, el('h2', { id: 'cw' }, 'Currency for the whole craft'), r?.avg != null ? el('span', { class: 'muted' }, 'on average ', moneyEl(r.avg)) : null),
+          el('div', { class: 'chips' }, ...(r?.currency || []).map(([name, c]) => el('span', { class: 'chip' }, el('b', {}, approx(c)), ` ${name}`))),
+          el('p', { class: 'note', style: 'margin-top: 10px' }, 'Amounts are averages: with luck you need less, without it more.')));
+      }
+      out.push(el('div', { class: 'row' }, el('button', { class: 'btn primary', type: 'button', onclick: () => { state.detail = true; render(); } }, 'See every method in detail')));
     } else {
       out.push(el('section', { class: 'next' }, el('h2', { class: 'big' }, 'No method reaches this target on this item'), el('p', { class: 'muted' }, 'Check the item level and influences, or edit the target.')));
     }
-    const rows = p.methods.filter((m) => m !== n).slice(0, 6);
+    const rows = p.methods.filter((m) => m.key !== first?.key).slice(0, 6);
     if (rows.length) {
       out.push(el('section', { 'aria-labelledby': 'ot' },
-        el('h2', { id: 'ot', style: 'margin-bottom: 8px' }, 'Other ways, cheapest first'),
+        el('h2', { id: 'ot', style: 'margin-bottom: 8px' }, steps.length > 1 ? 'Other ways for the first step' : 'Other ways, cheapest first'),
         el('div', { class: 'tablebox' }, el('table', {},
           el('thead', {}, el('tr', {}, el('th', {}, 'Method'), el('th', { class: 'num' }, 'Chance per try'), el('th', { class: 'num' }, 'Average cost'), el('th', {}, 'What happens to your item'))),
           el('tbody', {}, ...rows.map((m) => el('tr', {},
@@ -468,7 +504,15 @@ async function renderEditor(main) {
   ];
   kids.push(state.editorTab === 'pick' ? pickColumns(cls, base, d) : pasteBox(d, c));
   kids.push(editorBar(d));
+  // Отметка мода перерисовывает экран: списки и страница остаются там, где их прокрутили
+  const sig = `${d.slug}|${d.base}|${state.editorTab}`;
+  const keep = main.dataset.ed === sig ? { cols: [...main.querySelectorAll('.col')].map((c) => c.scrollTop), y: window.scrollY } : null;
   main.replaceChildren(...kids);
+  main.dataset.ed = sig;
+  if (keep) {
+    main.querySelectorAll('.col').forEach((c, i) => { c.scrollTop = keep.cols[i] || 0; });
+    window.scrollTo(0, keep.y);
+  }
 }
 
 function searchBox() {
