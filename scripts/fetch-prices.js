@@ -18,6 +18,20 @@ async function json(url) {
   } finally { clearTimeout(t); }
 }
 
+// В ответе poe.ninja названия есть только у chaos и divine; остальные — id как на сайте торговли
+const SHORT = {
+  chaos: 'Chaos Orb', divine: 'Divine Orb', exalted: 'Exalted Orb', annul: 'Orb of Annulment', alch: 'Orb of Alchemy',
+  alt: 'Orb of Alteration', aug: 'Orb of Augmentation', transmute: 'Orb of Transmutation', regal: 'Regal Orb',
+  scour: 'Orb of Scouring', chance: 'Orb of Chance', vaal: 'Vaal Orb', fusing: 'Orb of Fusing', jewellers: "Jeweller's Orb",
+  chrome: 'Chromatic Orb', blessed: 'Blessed Orb', regret: 'Orb of Regret', mirror: 'Mirror of Kalandra',
+};
+const SMALL = new Set(['of', 'the', 'and']);
+function slugName(id) {
+  const k = String(id);
+  if (SHORT[k]) return SHORT[k];
+  return k.split('-').map((w, i) => (i && SMALL.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ');
+}
+
 const round = (x) => Math.round(x * 1000) / 1000;
 const skip = (name) => /SSF|Solo|Ruthless/i.test(name);
 
@@ -47,7 +61,7 @@ function readExchange(d, chaos, log) {
   const items = d.core?.items;
   if (Array.isArray(items)) for (const x of items) names.set(String(x.id), x.name || x.text || x.id);
   else if (items && typeof items === 'object') for (const [k, v] of Object.entries(items)) names.set(String(k), v?.name || v?.text || k);
-  const nameOf = (id) => names.get(String(id)) || String(id);
+  const nameOf = (id) => names.get(String(id)) || slugName(id);
   const lines = d.lines || [];
   if (!lines.length) return 0;
   if (log) console.log('  exchange sample:', JSON.stringify({ core: { primary: d.core?.primary, secondary: d.core?.secondary, rates: d.core?.rates, item: Array.isArray(items) ? items[0] : null }, line: lines[0] }).slice(0, 500));
