@@ -1,0 +1,23 @@
+Item Class: Rings
+Rarity: Rare
+Rapture Loop
+Two-Stone Ring
+--------
+Requirements:
+Level: 41
+--------
+Item Level: 79
+--------
+{ Implicit Modifier — Elemental, Fire, Cold, Resistance }
++14(12-16)% to Fire and Cold Resistances
+--------
+{ Prefix Modifier "Fecund" (Tier: 4) — Life }
++62(60-69) to maximum Life
+{ Prefix Modifier "Rotund" (Tier: 4) — Mana }
++57(55-59) to maximum Mana
+{ Suffix Modifier "of the Rainbow" (Tier: 4) — Elemental, Fire, Cold, Lightning, Resistance }
++11(11-12)% to all Elemental Resistances
+{ Suffix Modifier "of the Wind" (Tier: 5) — Attribute }
++28(28-32) to Dexterity
+{ Suffix Modifier "of Celebration" (Tier: 4) — Attack, Speed }
+3(3-5)% increased Attack Speed

@@ -1,0 +1,52 @@
+name: Build and publish the site
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 * * * *' # цены — раз в час
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Game data (RePoE)
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/repoe-fork/repoe-fork.github.io repoe
+          cd repoe && git sparse-checkout set --no-cone /data/mods.json /data/mods_by_base.json /data/base_items.json /data/essences.json /data/fossils.json /data/crafting_bench_options.json
+      - run: node scripts/build-data.js repoe/data
+
+      - name: Prices (poe.ninja)
+        run: node scripts/fetch-prices.js
+
+      - run: npm test
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

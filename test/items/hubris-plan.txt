@@ -1,0 +1,21 @@
+Item Class: Helmets
+Rarity: Rare
+Doom Visor
+Hubris Circlet
+--------
+Energy Shield: 210 (augmented)
+--------
+Requirements:
+Level: 69
+Int: 154
+--------
+Item Level: 86
+--------
+{ Prefix Modifier "Rapturous" (Tier: 3) — Life }
++78(70-79) to maximum Life
+{ Prefix Modifier "Seraphim's" (Tier: 4) — Defences, Energy Shield }
+44(39-50)% increased Energy Shield
+{ Suffix Modifier "of the Ice" (Tier: 3) — Elemental, Cold, Resistance }
++38(36-41)% to Cold Resistance
+{ Suffix Modifier "of the Lost" (Tier: 6) — Chaos, Resistance }
++9(6-10)% to Chaos Resistance

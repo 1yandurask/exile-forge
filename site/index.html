@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exile Forge — Path of Exile crafting helper</title>
+  <meta name="description" content="Paste a Path of Exile item, pick the mods you want, and see the next crafting step with its chance and average cost.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <a class="brand" href="#" id="home">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M3 10h17.5c.4 2.4 2.6 3.8 6 3.8v1.4H19l-2.6 3.4v2.2h3.6v3.4H8.4v-3.4H12v-2.2L9.2 15.4C5.4 15.4 3 13.4 3 10z" fill="none" stroke="#8fcf8a" stroke-width="1.8" stroke-linejoin="round"></path><path d="M23.5 3.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#f0b45a"></path></svg>
+        Exile Forge
+      </a>
+      <nav class="tabs" aria-label="Sections">
+        <button class="tab" type="button" data-view="bench">Workbench</button>
+        <button class="tab" type="button" data-view="target">New target</button>
+      </nav>
+      <div class="top-right">
+        <span class="paste-hint" id="pasteHint">Paste an item: <span class="key">Ctrl + V</span></span>
+        <label class="league"><span class="sr">Prices from league</span><select id="league" aria-label="Prices from league"></select></label>
+      </div>
+    </header>
+    <div class="rail"></div>
+
+    <div class="body">
+      <aside class="side" aria-labelledby="savedH">
+        <h2 id="savedH">Saved targets</h2>
+        <div id="saved"></div>
+        <button class="new" type="button" id="newTarget">New target</button>
+      </aside>
+
+      <main class="main" id="main"></main>
+    </div>
+
+    <footer class="foot">
+      Not affiliated with or endorsed by Grinding Gear Games. Game data from RePoE. Prices from poe.ninja, updated hourly.
+      <a href="https://github.com/1yandurask/exile-forge">Source</a>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

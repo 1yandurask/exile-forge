@@ -1,0 +1,1 @@
+{"name":"exile-forge","version":"1.0.0","private":true,"type":"module","scripts":{"data":"node scripts/build-data.js","prices":"node scripts/fetch-prices.js","test":"node --test test/*.test.js"}}

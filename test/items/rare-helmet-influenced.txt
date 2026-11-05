@@ -1,0 +1,33 @@
+Item Class: Helmets
+Rarity: Rare
+Doom Crown
+Lion Pelt
+--------
+Evasion Rating: 650 (augmented)
+--------
+Requirements:
+Level: 70
+Dex: 150
+--------
+Sockets: G-G-B-R 
+--------
+Item Level: 86
+--------
+{ Eater of Worlds Implicit Modifier (Greater) — Life }
++12(11-13) to maximum Life
+{ Searing Exarch Implicit Modifier (Lesser) — Elemental, Fire, Resistance }
++10(8-10)% to Fire Resistance
+--------
+{ Fractured Prefix Modifier "Prior's" (Tier: 3) — Life }
++81(80-89) to maximum Life
+{ Prefix Modifier "The Shaper's" (Tier: 1) — Defences, Evasion }
+100(92-100)% increased Evasion Rating
+{ Suffix Modifier "of the Hunt" (Tier: 1) — Chaos, Resistance }
++25(21-25)% to Chaos Resistance
+{ Master Crafted Suffix Modifier "of Craft" (Rank: 2) — Elemental, Cold, Resistance }
++22(21-28)% to Cold Resistance
+--------
+Fractured Item
+--------
+Shaper Item
+Hunter Item

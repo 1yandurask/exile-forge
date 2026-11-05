@@ -1,0 +1,27 @@
+Item Class: Body Armours
+Rarity: Rare
+Grim Shell
+Vaal Regalia
+--------
+Energy Shield: 312 (augmented)
+--------
+Requirements:
+Level: 68
+Int: 194
+--------
+Sockets: B-B-B-B G B 
+--------
+Item Level: 84
+--------
+{ Prefix Modifier "Prior's" (Tier: 3) — Life }
++81(80-89) to maximum Life
+{ Prefix Modifier "Seraphim's" (Tier: 2) — Defences, Energy Shield }
+71(65-73)% increased Energy Shield
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++39(36-41)% to Fire Resistance
+{ Suffix Modifier "of the Ice" (Tier: 5) — Elemental, Cold, Resistance }
++25(24-29)% to Cold Resistance
+{ Suffix Modifier "of Shelter" (Tier: 4) — Elemental, Lightning, Resistance }
++30(30-35)% to Lightning Resistance
+{ Suffix Modifier "of the Crystal" (Tier: 6) — Chaos, Resistance }
++12(11-15)% to Chaos Resistance

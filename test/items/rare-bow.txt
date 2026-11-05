@@ -1,0 +1,34 @@
+Item Class: Bows
+Rarity: Rare
+Storm Thirst
+Spine Bow
+--------
+Bow
+Quality: +20% (augmented)
+Physical Damage: 120-360 (augmented)
+Elemental Damage: 20-40 (augmented), 5-90 (augmented)
+Critical Strike Chance: 6.50%
+Attacks per Second: 1.60 (augmented)
+--------
+Requirements:
+Level: 64
+Dex: 212
+--------
+Sockets: G-G-G-R-B-G
+--------
+Item Level: 84
+--------
+{ Prefix Modifier "Merciless" (Tier: 1) — Damage, Physical, Attack }
+160(155-169)% increased Physical Damage
+{ Prefix Modifier "Smoldering" (Tier: 8) — Damage, Elemental, Fire, Attack }
+Adds 20(18-24) to 40(36-42) Fire Damage
+{ Prefix Modifier "Shocking" (Tier: 3) — Damage, Elemental, Lightning, Attack }
+Adds 5(3-7) to 90(85-100) Lightning Damage
+{ Suffix Modifier "of the Multitude" — Attack }
+Bow Attacks fire 2 additional Arrows
+{ Suffix Modifier "of Celebration" (Tier: 1) — Attack, Speed }
+10(8-10)% increased Attack Speed
+{ Suffix Modifier "of the Inferno" (Tier: 4) — Elemental, Fire, Resistance }
++30(30-35)% to Fire Resistance
+{ Suffix Modifier "of the Thunderhead" (Tier: 5) — Elemental, Lightning, Resistance }
++22(18-23)% to Lightning Resistance
